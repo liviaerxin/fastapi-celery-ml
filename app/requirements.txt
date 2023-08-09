@@ -1,0 +1,8 @@
+uvicorn~=0.20.0
+fastapi~=0.92.0
+celery~=5.2.7
+redis~=4.5.1
+importlib-metadata==4.13.0 # v5.0.0 remove deprecated endpoint
+sqlalchemy~=2.0.15
+psycopg2~=2.9.6
+sqlalchemy-utils~=0.41.1

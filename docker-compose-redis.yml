@@ -1,0 +1,45 @@
+version: '3'
+services:
+  web:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    ports:
+      - 8000:8000
+    command: uvicorn app.main:app --host 0.0.0.0 --reload
+    volumes:
+      - ./app:/usr/src/app # for development mode
+    environment:
+      - BROKER_URL=redis://redis:6379/0
+      - RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    command: celery --app app.tasks:app worker --loglevel=info --logfile=logs/celery.log
+    volumes:
+      - ./app:/usr/src/app # for development mode
+    environment:
+      - BROKER_URL=redis://redis:6379/0
+      - RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
+
+  flower:
+    image: mher/flower
+    ports:
+      - 5566:5555
+    environment:
+      - BROKER_URL=redis://redis:6379/0
+      - RESULT_BACKEND=redis://redis111:6379/0
+    command: celery flower
+    depends_on:
+      - redis
