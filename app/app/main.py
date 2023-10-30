@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from celery.result import AsyncResult
 
-from .celery_task_app.tasks import (
+from .celery_task_app.ml_tasks import (
     create_short_task,
     create_medium_task,
     create_long_task,
