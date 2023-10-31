@@ -9,6 +9,13 @@ class CeleryConfig:
 
 app = Celery("tasks")
 app.config_from_object(CeleryConfig)
+# Celery routing
+app.conf.task_routes = {
+    'celery_app.ml_tasks.*': {
+        'queue': 'ml_service',
+    },
+}
+
 
 MODEL_DIR = join(dirname(dirname(dirname(abspath(__file__)))), "ml")
 
