@@ -1,4 +1,4 @@
-# FastAPI and Celery
+# Demo ML(mach) application
 
 Python ">=3.10"
 

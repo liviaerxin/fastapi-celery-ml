@@ -18,5 +18,5 @@ def classify_message(model, message):
 	return {'label': label, 'spam_probability': spam_prob[0][1]}
 
 
-classify_message(model=model, message="phishing emails from xxxx")
-classify_message(model=model, message="To use your credit, click the WAP link in the next txt message or click he")
+print(classify_message(model=model, message="phishing emails from xxxx"))
+print(classify_message(model=model, message="To use your credit, click the WAP link in the next txt message or click he"))
