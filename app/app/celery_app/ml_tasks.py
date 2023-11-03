@@ -1,23 +1,23 @@
 from celery import Celery, Task
 import importlib.util
-from os.path import dirname, abspath, join
+import os
 import sys
 
 class CeleryConfig:
-    broker_url = "redis://localhost:6379/0"
-    result_backend = "redis://localhost:6379/0"
+    broker_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+    result_backend = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
 
-app = Celery("tasks")
+app = Celery()
 app.config_from_object(CeleryConfig)
 # Celery routing
 app.conf.task_routes = {
-    'celery_app.ml_tasks.*': {
+    'app.celery_app.ml_tasks.*': {
         'queue': 'ml_service',
     },
 }
 
 
-MODEL_DIR = join(dirname(dirname(dirname(abspath(__file__)))), "ml")
+MODEL_DIR = os.path.abspath(os.path.join(__file__, "..", "..", "..", "ml"))
 
 class PredictTask(Task):
     """
