@@ -1,12 +1,17 @@
-# FastAPI + Celery Example
+# FastAPI + Celery + Machine Learning demo
 
 An example microservices illustrates how to perform heavy background computation task such as running machine learning model.
 
 ![](./2023-06-16-16-20-19.png)
 
-## Case 1
+In this demo, we will say:
 
-Celery uses `Redis` as both of `broker` and `backend`.
+- **Celery** uses `Redis` as both of `broker` and `backend`.
+- There are two **Celery** workers to do their separate tasks:
+  - **ml-worker** will only handle detecting spam tasks
+  - **email-worker** will only handle email related tasks
+  - both these two workers will run in solo pool
+- Use Redis
 
 Tech stack:
 
@@ -17,22 +22,6 @@ Tech stack:
 Workflow:
 
 ![workflow1](./out/workflow1.png)
-
-## Case 2
-
-Celery uses  `Redis` as `broker` and `PostgresSQL` as `backend`.
-
-Tech stack:
-
-- FastAPI
-- Celery
-  - Redis: as broker
-  - PostgresSQL: lower backend
-  - SQLAlchemy: higher backend
-
-Workflow:
-
-![workflow2](./out/workflow2.png)
 
 _NOTE_:
 
@@ -45,22 +34,18 @@ _NOTE_:
 
 ## Get Started
 
-Case 1:
-
 ```sh
-docker-compose -f docker-compose-redis.yml build
-# CTRL+C: just stop containers while keeping data
-docker-compose -f docker-compose-redis.yml up
-# Remove containers with wiping data
-docker-compose -f docker-compose-redis.yml down 
+docker-compose build
+
+docker-compose up -d
 ```
 
-Case 2:
+## Redis CLI
 
 ```sh
-docker-compose -f docker-compose-db.yml build
-# CTRL+C: just stop containers while keeping data
-docker-compose -f docker-compose-db.yml up
-# Remove containers with wiping data
-docker-compose -f docker-compose-db.yml down 
+redis-cli -h redis -p 6379
+```
+
+```sh
+
 ```
