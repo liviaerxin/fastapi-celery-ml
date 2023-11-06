@@ -6,23 +6,21 @@ import os
 import sys
 import time
 
+
 class CeleryConfig:
     broker_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
     result_backend = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+
 
 app = Celery()
 app.config_from_object(CeleryConfig)
 # Celery routing
 app.conf.task_routes = {
-    'app.celery_app.email_tasks.*': {
-        'queue': 'email_service',
+    "app.celery_app.email_tasks.*": {
+        "queue": "email_service",
     },
 }
 
-@app.task()
-def echo(msg: str) -> str:
-    time.sleep(5)
-    return f"test task return {msg}"
 
 @app.task(acks_late=True)
 def send_email(email_to: str):
@@ -39,7 +37,7 @@ def send_email(email_to: str):
     message["Subject"] = "multipart test"
     message["From"] = sender_email
     message["To"] = receiver_email
-    
+
     asparagus_cid = make_msgid()
     print(asparagus_cid)
     message.set_content(
@@ -69,7 +67,7 @@ def send_email(email_to: str):
     #     message.add_related(
     #         fp.read(), maintype="image", subtype="jpg", cid=asparagus_cid
     #     )
-        
+
     with smtplib.SMTP_SSL(smtp_server, port) as s:
         # s.set_debuglevel(1)
         # s.ehlo()

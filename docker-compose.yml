@@ -14,12 +14,25 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
       - redis
+  
+  worker:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    command: celery --app app.celery_app.tasks:app worker --pool=solo --loglevel=info -n "worker" --without-mingle
+    volumes:
+      - ./app:/usr/src/app # for development mode
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0 
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
 
   ml-worker:
     build:
       context: ./app
       dockerfile: Dockerfile.dev
-    command: celery --app app.celery_app.ml_tasks:app worker --pool=solo --loglevel=info -n "ml-worker" --queues=ml_service
+    command: celery --app app.celery_app.ml_tasks:app worker --pool=solo --loglevel=info -n "ml-worker" --without-mingle --queues=ml_service
     volumes:
       - ./app:/usr/src/app # for development mode
     environment:
@@ -32,7 +45,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile.dev
-    command: celery --app app.celery_app.email_tasks:app worker --pool=solo --loglevel=info -n "email-worker" --queues=email_service
+    command: celery --app app.celery_app.email_tasks:app worker --pool=prefork --concurrency=1 --loglevel=info -n "email-worker" --without-mingle --queues=email_service
     volumes:
       - ./app:/usr/src/app # for development mode
     environment:
@@ -52,7 +65,7 @@ services:
       - 5566:5555
     environment:
       - BROKER_URL=redis://redis:6379/0
-      - RESULT_BACKEND=redis://redis111:6379/0
+      - RESULT_BACKEND=redis://redis:6379/0
     command: celery flower
     depends_on:
       - redis

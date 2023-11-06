@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from celery.result import AsyncResult
 
-from .celery_app import ml_tasks, email_tasks
+from .celery_app import ml_tasks, email_tasks, tasks
 
 from pprint import pprint
 from . import schemas
@@ -132,12 +132,13 @@ html_content = """
 async def read_index():
     return HTMLResponse(content=html_content, status_code=200)
 
+
 @app.get("/test-celery/", response_model=None)
 async def test_celery(msg: str):
     """
     Test Celery worker.
     """
-    task: AsyncResult = email_tasks.echo.delay(msg)
+    task: AsyncResult = tasks.echo.delay(msg)
 
     # Main loop
     # loop = asyncio.get_running_loop()
@@ -146,6 +147,23 @@ async def test_celery(msg: str):
     #     print(f"custom thread pool result[{result}]")
 
     return {"msg": f"Message received: {msg}"}
+
+
+@app.get("/long-running-task/", response_model=None)
+async def do_long_running_task(secs: float):
+    """
+    Test Celery worker.
+    """
+    task: AsyncResult = ml_tasks.wait.delay(secs)
+    print(f"Start long running task[{task.id}] [{secs}]s")
+    # Main loop
+    # loop = asyncio.get_running_loop()
+    # with ThreadPoolExecutor() as pool:
+    #     result = await loop.run_in_executor(pool, task.get, 10)
+    #     print(f"custom thread pool result[{result}]")
+
+    return {"msg": f"Start long running task[{task.id}] [{secs}]s"}
+
 
 @app.get("/detect-spam", response_model=None)
 async def detect_spam(msg: str):
@@ -160,6 +178,7 @@ async def detect_spam(msg: str):
 
     return result
 
+
 @app.get("/send-email", response_model=None)
 async def send_email(email_to: str = "user1@rms.intranet"):
     task: AsyncResult = email_tasks.send_email.delay(email_to)
@@ -172,14 +191,17 @@ async def send_email(email_to: str = "user1@rms.intranet"):
 
     return {"msg": f"Message sent to: {email_to}"}
 
+
 @app.get("/tasks", response_model=None)
 async def read_tasks():
     i = email_tasks.app.control.inspect()
-    return {"reserved": i.reserved(),
-            "active": i.active(),
-            "scheduled": i.scheduled(),
-            "registered": i.registered(),
-            }
+    return {
+        "reserved": i.reserved(),
+        "active": i.active(),
+        "scheduled": i.scheduled(),
+        "registered": i.registered(),
+    }
+
 
 # @app.post("/tasks", status_code=201)
 # def create_task(task: schemas.TaskIn):
@@ -200,7 +222,7 @@ async def read_tasks():
 
 # @app.get("/tasks/{task_id}", response_model=Optional[schemas.Task])
 # def read_task(task_id: str):
-    
+
 #     result = AsyncResult(task_id, app=celery_app)
 #     pprint(celery_app.conf.database_table_names)
 
