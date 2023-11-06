@@ -69,3 +69,7 @@ services:
     command: celery flower
     depends_on:
       - redis
+
+  redis-cli:
+    image: redis:7.2
+    command: tail -f /dev/null
