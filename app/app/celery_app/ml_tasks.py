@@ -18,7 +18,7 @@ app.conf.task_routes = {
         "queue": "ml_service",
     },
 }
-app.conf.broker_transport_options = {"visibility_timeout": 3600}  # 1h
+app.conf.broker_transport_options = {"visibility_timeout": 36000}  # 1h
 
 MODEL_DIR = os.path.abspath(os.path.join(__file__, "..", "..", "..", "ml"))
 
@@ -78,11 +78,3 @@ def detect_spam(self, msg: str):
     """
     result = self.model.predict(msg)
     return result
-
-
-@app.task(acks_late=True)
-def wait(secs: float) -> str:
-    print(f"wait() - Start, secs[{secs}]s")
-    time.sleep(secs)
-    print(f"wait() - Done, secs[{secs}]s")
-    return f"wait() - Done, secs[{secs}]s"

@@ -154,7 +154,7 @@ async def do_long_running_task(secs: float):
     """
     Test Celery worker.
     """
-    task: AsyncResult = ml_tasks.wait.delay(secs)
+    task: AsyncResult = tasks.wait.delay(secs)
     print(f"Start long running task[{task.id}] [{secs}]s")
     # Main loop
     # loop = asyncio.get_running_loop()
