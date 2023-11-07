@@ -19,7 +19,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile.dev
-    command: celery --app app.celery_app.tasks:app worker --pool=prefork --concurrency=1 -n worker --loglevel=debug --without-mingle
+    command: celery --app app.celery_app.tasks:app worker --pool=prefork --concurrency=4 -n worker --loglevel=info --without-mingle
     volumes:
       - ./app:/usr/src/app # for development mode
     environment:
@@ -32,7 +32,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile.dev
-    command: celery --app app.celery_app.ml_tasks:app worker --pool=solo  -n ml-worker --loglevel=debug --without-mingle --queues=ml_service
+    command: celery --app app.celery_app.ml_tasks:app worker --pool=solo  -n ml-worker --loglevel=info --without-mingle --queues=ml_service
     volumes:
       - ./app:/usr/src/app # for development mode
     environment:
@@ -45,7 +45,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile.dev
-    command: celery --app app.celery_app.email_tasks:app worker --pool=prefork --concurrency=1 -n email-worker --loglevel=debug --without-mingle --queues=email_service
+    command: celery --app app.celery_app.email_tasks:app worker --pool=prefork --concurrency=1 -n email-worker --loglevel=info --without-mingle --queues=email_service
     volumes:
       - ./app:/usr/src/app # for development mode
     environment:

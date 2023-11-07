@@ -34,6 +34,22 @@ _NOTE_:
 - `FastAPI` will not involve with `broker` and `backend` directly, it's done through `Celery`
 - `Celery` will use schema [Task and TaskSet](https://docs.celeryq.dev/en/latest/internals/reference/celery.backends.database.models.html#celery.backends.database.models) to store task result.
 
+## Prerequisites
+
+### Prepare the machine learning model
+
+In `./app/ml` folder, run
+
+```sh
+python train_spam_detector.py
+```
+
+Test trained model,
+
+```sh
+python test_spam_detector.py
+```
+
 ## Get Started
 
 ```sh
@@ -41,6 +57,24 @@ docker-compose build
 
 docker-compose up -d
 ```
+
+## Tests
+
+### Test Celery tasks
+
+For testing Celery tasks, the Celery worker must be spined up before running the tests. Here we run up Celery workers with the help from Docker compose.
+
+> NOTE: When running tests outside the docker compose, the **Redis** in docker should be exposed to the outside.
+
+```sh
+python -m pytest tests/celery_app/test_tasks.py -s
+python -m pytest tests/celery_app/test_tasks.py::test_echo -s
+```
+
+### Test web app
+
+## Examples
+
 
 ## Redis CLI
 

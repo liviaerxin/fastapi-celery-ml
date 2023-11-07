@@ -1,7 +1,6 @@
-from celery import Celery, Task
-from email.utils import make_msgid
-from email.message import EmailMessage
-import smtplib
+from celery import Celery, Task, chord, group
+from celery.result import AsyncResult, allow_join_result
+from typing import List
 import os
 import sys
 import time
@@ -38,8 +37,36 @@ def wait(secs: float) -> str:
 
 
 @app.task(bind=True)
-def add(self, x, y):
+def add(self, x, y) -> int:
     print(f"add() - task[{self.request.id}], x[{x}], y[{y}]")
     total = x + y
     print(f"add() - task[{self.request.id}], total[{total}]")
     return total
+
+
+@app.task()
+def map(data: str) -> int:
+    print(f"map() - task[{app.current_task.request.id}] data[{data}]")
+    size = len(data)
+    return size
+
+
+@app.task()
+def reduce(counts: List[int]) -> int:
+    print(f"reduce() - task[{app.current_task.request.id}] counts[{counts}]")
+    total = 0
+    for c in counts:
+        total += c
+    return total
+
+
+@app.task()
+def mapreduce(data: List[str]):
+    print(f"mapreduce() - task[{app.current_task.request.id}] data[{data}]")
+    job = group([map.s(x) for x in data])
+    task: AsyncResult = job.delay()
+    with allow_join_result():
+        result = task.get()
+    # task.get(disable_sync_subtasks=False)
+    print(f"mapreduce() - result[{result}]")
+    return result
