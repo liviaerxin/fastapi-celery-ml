@@ -29,16 +29,7 @@ def test_reduce():
     print(f"test_reduce() - result[{result}]")
     assert result == 18
 
-
 def test_mapreduce():
-    data = ["hello world", "hi", "welcome"]
-    task: AsyncResult = chord([tasks.map.s(x) for x in data])(tasks.reduce.s())
-    result = task.get()
-    print(f"test_mapreduce() - result[{result}]")
-    assert result == 20
-
-
-def test_mapreduce_1():
     data = ["hello world", "hi", "welcome"]
     task: AsyncResult = tasks.mapreduce.delay(data)
     result = task.get()

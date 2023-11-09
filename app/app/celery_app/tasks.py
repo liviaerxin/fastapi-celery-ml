@@ -43,13 +43,16 @@ def add(self, x, y) -> int:
     print(f"add() - task[{self.request.id}], total[{total}]")
     return total
 
+@app.task(name="celery.notify", shared=False, ignore_result=True)
+def notify(mgs: str):
+    print(f"notify() - mgs[{mgs}]")
 
-@app.task()
+@app.task(ignore_result=False)
 def map(data: str) -> int:
     print(f"map() - task[{app.current_task.request.id}] data[{data}]")
+    time.sleep(3)
     size = len(data)
     return size
-
 
 @app.task()
 def reduce(counts: List[int]) -> int:
