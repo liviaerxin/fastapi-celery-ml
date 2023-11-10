@@ -19,7 +19,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile.dev
-    command: celery --app app.celery_app.tasks:app worker --pool=prefork --concurrency=4 -n worker --loglevel=info --without-mingle
+    command: celery --app app.celery_app.tasks:app worker --pool=prefork --concurrency=1 -n worker --loglevel=info --without-mingle
     volumes:
       - ./app:/usr/src/app # for development mode
     environment:
