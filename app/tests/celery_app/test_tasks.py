@@ -29,6 +29,7 @@ def test_reduce():
     print(f"test_reduce() - result[{result}]")
     assert result == 18
 
+
 def test_mapreduce():
     data = ["hello world", "hi", "welcome"]
     task: AsyncResult = tasks.mapreduce.delay(data)

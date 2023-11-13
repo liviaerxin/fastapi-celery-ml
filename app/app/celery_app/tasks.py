@@ -37,15 +37,27 @@ def wait(secs: float) -> str:
 
 
 @app.task(bind=True)
-def add(self, x, y) -> int:
+def add(self, x: float, y: float) -> float:
     print(f"add() - task[{self.request.id}], x[{x}], y[{y}]")
+    time.sleep(10)
     total = x + y
     print(f"add() - task[{self.request.id}], total[{total}]")
     return total
 
+
+@app.task(bind=True)
+def mul(self, x: float, y: float):
+    print(f"mul() - task[{self.request.id}], x[{x}], y[{y}]")
+    time.sleep(10)
+    total = x * y
+    print(f"add() - task[{self.request.id}], total[{total}]")
+    return total
+
+
 @app.task(name="celery.notify", shared=False, ignore_result=True)
 def notify(mgs: str):
     print(f"notify() - mgs[{mgs}]")
+
 
 @app.task(ignore_result=False)
 def map(data: str) -> int:
@@ -53,6 +65,7 @@ def map(data: str) -> int:
     time.sleep(3)
     size = len(data)
     return size
+
 
 @app.task()
 def reduce(counts: List[int]) -> int:
