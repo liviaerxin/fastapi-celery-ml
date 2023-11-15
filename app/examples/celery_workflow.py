@@ -189,32 +189,79 @@ def show_progress():
     print(f"result: {result.get()}")
 
 
-def run_():
-    # t1 + t2 > t3 > t4 + (t51, t52, t53, t54, t55, t56) > t6
-    t1 = tasks.add.s(4, 5).set(task_id=str(uuid.uuid4()))
-    t2 = tasks.progress.s(10).set(task_id=str(uuid.uuid4()))
-    # print_task(t1)
-    # print_task(t2)
+"""_summary_
+dag_adjacency_list={
+    t1: [t3], #
+    t2: [t3],
+    t3: [t4, t5]
+    t4: [t6]
+    t5: [t6]
+}
 
-    t4 = tasks.progress.s()
-    t5 = tasks.wait.s()
+# t1 + t2 > t3 > t4 + (t51, t52, t53, t54, t55, t56) > t6
+"""
 
-    t6 = tasks.log.s()
 
-    t3 = tasks.dmap.s(t4, t5, t6)
+def run_workflow():
+    input_video = "foo.mp4"
+    print(f"run_workflow() - process video[{input_video}]")
+    t1: Signature = tasks.convert_video.s(video_path=input_video).set(
+        task_id=str(uuid.uuid4())
+    )
+    t2: Signature = tasks.analyze_video.s(video_path=input_video).set(
+        task_id=str(uuid.uuid4())
+    )
 
-    t = chain(group([t1, t2]), t3)
-    print_task(t)
+    g12: Signature = group(t1, t2)
+    g12_res: GroupResult = g12.apply_async()
 
-    result: AsyncResult = t.apply_async()
+    # Blocking util t1, t2 all are completed
+    while not g12_res.ready():
+        res1 = AsyncResult(id=t1.id)
+        res2 = AsyncResult(id=t2.id)
+        print(f"result #t1, result[{res1.result}] status[{res1.status}]")
+        print(f"result #t2, result[{res2.result}] status[{res2.status}]")
+        print(
+            f"result #g12, completed_count#[{g12_res.completed_count()}] ready[{g12_res.ready()}]"
+        )
 
-    print(result.get())
+        time.sleep(1)
 
-    chord_task_id = result.get()[0][0]
+    print(f"result #g12, {g12_res.get()}")
+    output_video, frames = g12_res.get()
 
-    print(chord_task_id)
+    t4: Signature = tasks.mark_video.s(video_path=output_video).set(
+        task_id=str(uuid.uuid4())
+    )
+    t5: Signature = tasks.clip_videos.s(video_path=output_video, frames=frames).set(
+        task_id=str(uuid.uuid4())
+    )
 
-    print(AsyncResult(id=chord_task_id).get())
+    g45: Signature = group(t4, t5)
+    g45_res: GroupResult = g45.apply_async()
+
+    # Blocking util t4, t5 all are completed
+    while not g45_res.ready():
+        res4 = AsyncResult(id=t4.id)
+        res5 = AsyncResult(id=t5.id)
+        print(f"result #t4, result[{res4.result}] status[{res4.status}]")
+        print(f"result #t5, result[{res5.result}] status[{res5.status}]")
+        print(
+            f"result #g45, result[{g45_res.completed_count()}] ready[{g45_res.ready()}]"
+        )
+
+        time.sleep(1)
+
+    print(f"result #g45, {g45_res.get()}")
+    mark_video, clipped_videos = g45_res.get()
+
+
+def run_workflow_1():
+    input_video = "foo.mp4"
+    print(f"run_workflow_1() - process video[{input_video}]")
+    res: AsyncResult = tasks.pipeline.delay(video_path=input_video)
+
+    print(f"run_workflow_1() - #[{res.id}] result: {res.get()}")
 
 
 if __name__ == "__main__":
@@ -222,4 +269,5 @@ if __name__ == "__main__":
     # run_chord_graph(dryrun=False, wait=True)
     # run_signature(dryrun=False)
     # show_progress()
-    run_()
+    # run_workflow()
+    run_workflow_1()

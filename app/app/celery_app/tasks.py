@@ -1,10 +1,12 @@
 from celery import Celery, Task, chord, group, subtask, chain
-from celery.result import AsyncResult, allow_join_result, GroupResult
+from celery.result import AsyncResult, GroupResult, allow_join_result
+from celery.canvas import Signature
 from typing import List, Any
 import os
 import sys
 import time
 import math
+import uuid
 
 
 class CeleryConfig:
@@ -80,6 +82,117 @@ def mul(self, x: float, y: float):
     total = x * y
     print(f"add() - task[{self.request.id}], total[{total}]")
     return total
+
+
+@app.task(bind=True)
+def convert_video(self, video_path: str) -> str:
+    print(f"convert_video() - task[{self.request.id}], video_path[{video_path}]")
+    time.sleep(10)
+    root, ext = os.path.splitext(video_path)
+    output_video_path = f"{root}.out{ext}"
+    print(
+        f"convert_video() - task[{self.request.id}], output_video_path[{output_video_path}]"
+    )
+    return output_video_path
+
+
+@app.task(bind=True)
+def analyze_video(self, video_path: str) -> List[int]:
+    import random
+
+    print(f"convert_video() - task[{self.request.id}], video_path[{video_path}]")
+    time.sleep(10)
+    frames = random.sample(range(0, 20), 5)
+    print(f"convert_video() - task[{self.request.id}], frames[{frames}]")
+    return frames
+
+
+@app.task(bind=True)
+def mark_video(self, video_path: str) -> str:
+    print(f"mark_video() - task[{self.request.id}], video_path[{video_path}")
+    time.sleep(10)
+    root, ext = os.path.splitext(video_path)
+    mark_video_path = f"{root}.mark{ext}"
+    print(f"mark_video() - task[{self.request.id}], mark_video_path[{mark_video_path}]")
+    return mark_video_path
+
+
+@app.task(bind=True)
+def clip_video(self, video_path: str, frame: int) -> str:
+    print(
+        f"clip_video() - task[{self.request.id}], video_path[{video_path} frame[{frame}]"
+    )
+    time.sleep(10)
+    root, ext = os.path.splitext(video_path)
+    clipped_video_path = f"{root}.{frame}{ext}"
+    print(
+        f"clip_video() - task[{self.request.id}], clipped_video_path[{clipped_video_path}]"
+    )
+    return clipped_video_path
+
+
+@app.task(bind=True)
+def clip_videos(self: Task, video_path: str, frames: List[int]):
+    print(
+        f"clip_video() - task[{self.request.id}], video_path[{video_path}] frames[{frames}]"
+    )
+
+    subtasks: List[Signature] = []
+    for frame in frames:
+        t: Signature = clip_video.s(video_path=video_path, frame=frame).set(
+            task_id=str(uuid.uuid4())
+        )
+        subtasks.append(t)
+
+    g: Signature = group(subtasks)
+
+    # To make the `g` be trackable, save the group result
+    # After that, we can get the result by `GroupResult.restore(g_id)`
+    g_result: GroupResult = GroupResult(
+        id=self.request.id, results=[AsyncResult(id=t.id) for t in subtasks]
+    )
+    g_result.save()
+
+    # Replace clip_videos with `g` task.
+    # Inside this step, the `g` will be `apply_async()`.
+    # So there is no need to call `apply_async()`
+    self.replace(g)
+    # code will not execute after `replace()`
+    return
+
+
+@app.task(bind=True)
+def dmap_video(self, result, t4, t5):
+    output_video = result[0]
+    frames = result[1]
+
+    t4 = subtask(t4)
+    t5 = subtask(t5)
+
+    t4: Signature = t4.clone(args=(output_video,))
+    t5: Signature = t5.clone(args=(output_video, frames))
+
+    g = group(t4, t5)
+    self.replace(g)
+
+
+@app.task(bind=True)
+def pipeline(self: Task, video_path: str):
+    input_video = video_path
+    t1: Signature = convert_video.s(video_path=input_video).set(
+        task_id=str(uuid.uuid4())
+    )
+    t2: Signature = analyze_video.s(video_path=input_video).set(
+        task_id=str(uuid.uuid4())
+    )
+
+    t4: Signature = mark_video.s().set(task_id=str(uuid.uuid4()))
+    t5: Signature = clip_videos.s().set(task_id=str(uuid.uuid4()))
+
+    workflow: Signature = chain(group(t1, t2), dmap_video.s(t4, t5))
+    # res: AsyncResult = workflow.apply_async()
+
+    return self.replace(workflow)
 
 
 @app.task(name="celery.notify", shared=False, ignore_result=True)
