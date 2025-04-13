@@ -1,0 +1,75 @@
+version: '3'
+services:
+  web:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    ports:
+      - 8000:8000
+    command: uvicorn app.main:app --host 0.0.0.0 --reload
+    volumes:
+      - ./app:/usr/src/app # for development mode
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+  
+  worker:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    command: celery --app app.celery_app.tasks:app worker --pool=prefork --concurrency=2 -n worker --loglevel=info --without-mingle
+    volumes:
+      - ./app:/usr/src/app # for development mode
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0 
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  ml-worker:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    command: celery --app app.celery_app.ml_tasks:app worker --pool=solo  -n ml-worker --loglevel=info --without-mingle --queues=ml_service
+    volumes:
+      - ./app:/usr/src/app # for development mode
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0 
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  email-worker:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    command: celery --app app.celery_app.email_tasks:app worker --pool=prefork --concurrency=1 -n email-worker --loglevel=info --without-mingle --queues=email_service
+    volumes:
+      - ./app:/usr/src/app # for development mode
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7.2
+    ports:
+      - 6379:6379
+
+  flower:
+    image: mher/flower
+    ports:
+      - 5566:5555
+    environment:
+      - BROKER_URL=redis://redis:6379/0
+      - RESULT_BACKEND=redis://redis:6379/0
+    command: celery flower
+    depends_on:
+      - redis
+
+  redis-cli:
+    image: redis:7.2
+    command: tail -f /dev/null

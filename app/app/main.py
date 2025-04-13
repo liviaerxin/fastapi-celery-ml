@@ -4,15 +4,12 @@ from enum import Enum
 from pydantic import BaseModel
 from typing import Any, Union, Optional
 from sqlalchemy.orm import Session
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from celery.result import AsyncResult
 
-from .tasks import (
-    create_short_task,
-    create_medium_task,
-    create_long_task,
-    app as celery_app,
-)
+from .celery_app import ml_tasks, email_tasks, tasks
 
 from pprint import pprint
 from . import schemas
@@ -136,40 +133,110 @@ async def read_index():
     return HTMLResponse(content=html_content, status_code=200)
 
 
-@app.post("/tasks", status_code=201)
-def create_task(task: schemas.TaskIn):
-    task_result: AsyncResult = None
+@app.get("/test-celery/", response_model=None)
+async def test_celery(msg: str):
+    """
+    Test Celery worker.
+    """
+    task: AsyncResult = tasks.echo.delay(msg)
 
-    if task.type == schemas.TaskType.short:
-        task_result = create_short_task.delay()
-    if task.type == schemas.TaskType.medium:
-        task_result = create_medium_task.delay()
-    if task.type == schemas.TaskType.long:
-        task_result = create_long_task.delay()
+    # Main loop
+    # loop = asyncio.get_running_loop()
+    # with ThreadPoolExecutor() as pool:
+    #     result = await loop.run_in_executor(pool, task.get, 10)
+    #     print(f"custom thread pool result[{result}]")
 
-    task_id = task_result.id
-    pprint(task_id)
-
-    return {"task_id": task_id}
+    return {"msg": f"Message received: {msg}"}
 
 
-@app.get("/tasks/{task_id}", response_model=Optional[schemas.Task])
-def read_task(task_id: str):
-    
-    result = AsyncResult(task_id, app=celery_app)
-    pprint(celery_app.conf.database_table_names)
+@app.get("/long-running-task/", response_model=None)
+async def do_long_running_task(secs: float):
+    """
+    Test Celery worker.
+    """
+    task: AsyncResult = tasks.wait.delay(secs)
+    print(f"Start long running task[{task.id}] [{secs}]s")
+    # Main loop
+    # loop = asyncio.get_running_loop()
+    # with ThreadPoolExecutor() as pool:
+    #     result = await loop.run_in_executor(pool, task.get, 10)
+    #     print(f"custom thread pool result[{result}]")
 
-    task = schemas.Task(
-        task_id=result.task_id,
-        status=result.status,
-        date_done=result.date_done,
-        name=result.name,
-        args=result.args,
-        kwargs=result.kwargs,
-        worker=result.worker,
-        retries=result.retries,
-        queue=result.queue,
-    )
-    pprint(task)
+    return {"msg": f"Start long running task[{task.id}] [{secs}]s"}
 
-    return task
+
+@app.get("/detect-spam", response_model=None)
+async def detect_spam(msg: str):
+    # result = ml_tasks.detect_spam(msg=msg)
+    task: AsyncResult = ml_tasks.detect_spam.delay(msg)
+
+    # Main loop
+    loop = asyncio.get_running_loop()
+    with ThreadPoolExecutor() as pool:
+        result = await loop.run_in_executor(pool, task.get, 10)
+        print(f"custom thread pool result[{result}]")
+
+    return result
+
+
+@app.get("/send-email", response_model=None)
+async def send_email(email_to: str = "user1@rms.intranet"):
+    task: AsyncResult = email_tasks.send_email.delay(email_to)
+
+    # Main loop
+    # loop = asyncio.get_running_loop()
+    # with ThreadPoolExecutor() as pool:
+    #     result = await loop.run_in_executor(pool, task.get, 10)
+    #     print(f"custom thread pool result[{result}]")
+
+    return {"msg": f"Message sent to: {email_to}"}
+
+
+@app.get("/tasks", response_model=None)
+async def read_tasks():
+    i = email_tasks.app.control.inspect()
+    return {
+        "reserved": i.reserved(),
+        "active": i.active(),
+        "scheduled": i.scheduled(),
+        "registered": i.registered(),
+    }
+
+
+# @app.post("/tasks", status_code=201)
+# def create_task(task: schemas.TaskIn):
+#     task_result: AsyncResult = None
+
+#     if task.type == schemas.TaskType.short:
+#         task_result = create_short_task.delay()
+#     if task.type == schemas.TaskType.medium:
+#         task_result = create_medium_task.delay()
+#     if task.type == schemas.TaskType.long:
+#         task_result = create_long_task.delay()
+
+#     task_id = task_result.id
+#     pprint(task_id)
+
+#     return {"task_id": task_id}
+
+
+# @app.get("/tasks/{task_id}", response_model=Optional[schemas.Task])
+# def read_task(task_id: str):
+
+#     result = AsyncResult(task_id, app=celery_app)
+#     pprint(celery_app.conf.database_table_names)
+
+#     task = schemas.Task(
+#         task_id=result.task_id,
+#         status=result.status,
+#         date_done=result.date_done,
+#         name=result.name,
+#         args=result.args,
+#         kwargs=result.kwargs,
+#         worker=result.worker,
+#         retries=result.retries,
+#         queue=result.queue,
+#     )
+#     pprint(task)
+
+#     return task
