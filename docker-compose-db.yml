@@ -1,0 +1,66 @@
+version: '3'
+services:
+  web:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    ports:
+      - 8000:8000
+    environment:
+      - BROKER_URL=redis://redis:6379/0
+      - RESULT_BACKEND=db+postgresql://postgres:example@postgresserver/db # ref: `POSTGRES_DB`
+    command: uvicorn app.main:app --host 0.0.0.0 --reload
+    volumes:
+      - ./app:/usr/src/app # for development mode
+    depends_on:
+      - redis
+      - db
+
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: db # database will be created, default `postgres`
+    networks:
+      default:
+        aliases:
+          - postgresserver
+
+  worker:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    environment:
+      - BROKER_URL=redis://redis:6379/0
+      - RESULT_BACKEND=db+postgresql://postgres:example@postgresserver/db
+    volumes:
+      - ./app:/usr/src/app # for development mode
+    command: celery --app app.tasks:app worker --loglevel=debug --logfile=logs/celery.log
+    depends_on:
+      - redis
+      - db
+
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
+
+  flower:
+    image: mher/flower
+    ports:
+      - 5566:5555
+    environment:
+      - BROKER_URL=redis://redis:6379/0
+      - RESULT_BACKEND=db+postgresql://postgres:example@postgresserver/db
+    command: celery flower
+    depends_on:
+      - redis
+      - db
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
